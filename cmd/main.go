@@ -33,8 +33,8 @@ func main() {
 	    fmt.Println("Initialized git directory")
 
     case "cat-file":
-        if len(os.Args) < 3 {
-            fmt.Fprintf(os.Stderr, "usage: mygit cat-file -p [<args>...]\n")
+        if len(os.Args) < 4 {
+            fmt.Fprintf(os.Stderr, "usage: mygit cat-file -p <object>\n")
             os.Exit(1)
         }
 
@@ -51,8 +51,8 @@ func main() {
         r.Close()
 
     case "hash-object":
-        if len(os.Args) < 3 {
-            fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w [<args>...]\n")
+        if len(os.Args) < 4 {
+            fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w <file>\n")
             os.Exit(1)
         }
 
