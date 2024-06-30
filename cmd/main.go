@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/zlib"
 	"crypto/sha1"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -12,10 +13,18 @@ import (
 )
 
 func main() {
-	 if len(os.Args) < 2 {
-	 	fmt.Fprintf(os.Stderr, "usage: mygit <command> [<args>...]\n")
-	 	os.Exit(1)
-	 }
+    if len(os.Args) < 2 {
+        fmt.Fprintf(os.Stderr, "usage: mygit <command> [<args>...]\n")
+        os.Exit(1)
+    }
+
+    // flags
+    catfileFlag := flag.NewFlagSet("cat-file", flag.ExitOnError)
+    prettyPrint := catfileFlag.Bool("p", false, "pretty-print <object> content")
+
+    hashobjectFlag := flag.NewFlagSet("hash-object", flag.ExitOnError)
+    writeObject := hashobjectFlag.Bool("w", false, "write the object into the object database")
+
 
 	switch command := os.Args[1]; command {
     case "init":
@@ -33,14 +42,19 @@ func main() {
 	    fmt.Println("Initialized git directory")
 
     case "cat-file":
-        if len(os.Args) < 4 {
+        if err := catfileFlag.Parse(os.Args[2:]); err != nil {
             fmt.Fprintf(os.Stderr, "usage: mygit cat-file -p <object>\n")
             os.Exit(1)
         }
 
-        sha := os.Args[3]
+        if !*prettyPrint || catfileFlag.NArg() < 1 {
+            fmt.Fprintf(os.Stderr, "usage: mygit cat-file -p <object>\n")
+            os.Exit(1)
+        }
 
-        path := fmt.Sprintf(".git/objects/%s/%s", sha[0:2], sha[2:])
+        sha := catfileFlag.Arg(0)
+
+        path := fmt.Sprintf(".git/objects/%s/%s", sha[:2], sha[2:])
 
         file, _ := os.Open(path)
         r, _ := zlib.NewReader(io.Reader(file))
@@ -51,13 +65,18 @@ func main() {
         r.Close()
 
     case "hash-object":
-        if len(os.Args) < 4 {
-            fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w <file>\n")
+        if err := hashobjectFlag.Parse(os.Args[2:]); err != nil {
+            fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w <object>\n")
             os.Exit(1)
         }
 
-        file, _ := os.ReadFile(os.Args[3])
-        stats, _ := os.Stat(os.Args[3])
+        if !*writeObject || hashobjectFlag.NArg() < 1 {
+            fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w <object>\n")
+            os.Exit(1)
+        }
+
+        file, _ := os.ReadFile(hashobjectFlag.Arg(0))
+        stats, _ := os.Stat(hashobjectFlag.Arg(0))
 
         content := string(file)
         contentAndHeader := fmt.Sprintf("blob %d\x00%s", stats.Size(), content)
