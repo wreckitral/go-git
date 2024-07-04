@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func main() {
@@ -26,6 +27,7 @@ func main() {
     lstreeFlag := flag.NewFlagSet("ls-tree", flag.ExitOnError)
     nameOnly := lstreeFlag.Bool("name-only", false, "list only filenames")
 
+    commitTreeFlag := flag.NewFlagSet("commit-tree", flag.ExitOnError)
 
 	switch command := os.Args[1]; command {
     case "init":
@@ -138,6 +140,40 @@ func main() {
         }
 
         fmt.Println(treeHash)
+
+    case "commit-tree":
+        if err := commitTreeFlag.Parse(os.Args[2:]); err != nil {
+            fmt.Fprintf(os.Stderr, "usage: mygit commit-tree <object> -p <object> -m \"commit message\"\n")
+            os.Exit(1)
+        }
+
+        if commitTreeFlag.NArg() < 4 {
+            fmt.Fprintf(os.Stderr, "usage: mygit commit-tree <object> -p <object> -m \"commit message\"\n")
+            os.Exit(1)
+        }
+
+        treeSha := commitTreeFlag.Arg(0)
+        parent := commitTreeFlag.Arg(2)
+        msg := commitTreeFlag.Arg(3)
+
+        author := "wreckitral"
+        email := "defhanayasofhiea@gmail.com"
+        currentTime := time.Now().Unix()
+        timezone, _ := time.Now().Local().Zone()
+
+        commitData := fmt.Sprintf("tree %s\nparent %s\nauthor %s <%s> %s %s\ncommitter %s <%s> %s %s\n\n%s\n",
+            treeSha, parent, author, email,
+            fmt.Sprint(currentTime), timezone, author, email,
+            fmt.Sprint(currentTime), timezone, msg)
+
+        hash := hashObject("commit", []byte(commitData))
+
+        if err := writeObject(hash, []byte(commitData)); err != nil {
+            fmt.Println("error cuk")
+        }
+
+        fmt.Println(hash)
+
     default:
 	    fmt.Fprintf(os.Stderr, "Unknown command %s\n", command)
 	    os.Exit(1)
