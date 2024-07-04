@@ -3,12 +3,10 @@ package main
 import (
 	"bytes"
 	"compress/zlib"
-	"crypto/sha1"
 	"flag"
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -23,7 +21,7 @@ func main() {
     prettyPrint := catfileFlag.Bool("p", false, "pretty-print <object> content")
 
     hashobjectFlag := flag.NewFlagSet("hash-object", flag.ExitOnError)
-    writeObject := hashobjectFlag.Bool("w", false, "write the object into the object database")
+    writeObjFlag := hashobjectFlag.Bool("w", false, "write the object into the object database")
 
     lstreeFlag := flag.NewFlagSet("ls-tree", flag.ExitOnError)
     nameOnly := lstreeFlag.Bool("name-only", false, "list only filenames")
@@ -73,47 +71,18 @@ func main() {
             os.Exit(1)
         }
 
-        if !*writeObject || hashobjectFlag.NArg() < 1 {
+        if !*writeObjFlag || hashobjectFlag.NArg() < 1 {
             fmt.Fprintf(os.Stderr, "usage: mygit hash-object -w <object>\n")
             os.Exit(1)
         }
 
         file, _ := os.ReadFile(hashobjectFlag.Arg(0))
-        stats, _ := os.Stat(hashobjectFlag.Arg(0))
 
-        content := string(file)
-        contentAndHeader := fmt.Sprintf("blob %d\x00%s", stats.Size(), content)
+        hash := hashObject("blob", file)
 
-        sha := sha1.Sum([]byte(contentAndHeader))
-        hash := fmt.Sprintf("%x", sha) // to base 16, with lower-case letters a-f
-
-        blobPath := fmt.Sprintf(".git/objects/%s/%s", hash[:2], hash[2:])
-
-        // write the bytes to this buffer variable
-        var buffer bytes.Buffer
-
-        z := zlib.NewWriter(&buffer)
-
-        _, err := z.Write([]byte(contentAndHeader))
-        if err != nil {
-            fmt.Printf("failed on file compression: %s", err.Error())
-        }
-        z.Close()
-
-        if err := os.MkdirAll(filepath.Dir(blobPath), os.ModePerm); err != nil {
-            fmt.Printf("failed on creating directory: %s", err.Error())
-        }
-
-        f, err := os.Create(blobPath)
-        if err != nil {
-            fmt.Printf("failed on creating file: %s", err.Error())
-        }
-        defer f.Close()
-
-        // write buffer to the file
-        _, err = f.Write(buffer.Bytes())
-        if err != nil {
-            fmt.Printf("failed on writing file: %s", err.Error())
+        if err := writeObject(hash, file); err != nil {
+            fmt.Fprintf(os.Stderr, "failed writing object: %s", err.Error())
+            os.Exit(1)
         }
 
         fmt.Print(hash)
