@@ -136,6 +136,14 @@ func main() {
             os.Exit(1)
         }
 
+    case "write-tree":
+        hash, err := writeTree(".")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Error writing tree:", err)
+			os.Exit(1)
+		}
+		fmt.Println(hash)
+
     default:
 	    fmt.Fprintf(os.Stderr, "Unknown command %s\n", command)
 	    os.Exit(1)
@@ -210,4 +218,21 @@ func parseTree(data []byte, nameOnly bool) error {
     }
 
     return nil
+}
+
+func writeTree(dir string) (string, error) {
+	entries, err := collectEntries(dir)
+	if err != nil {
+		return "", err
+	}
+
+	treeContent := formatTree(entries)
+	treeHash := hashObject("tree", treeContent)
+
+	err = writeObject(treeHash, treeContent)
+	if err != nil {
+		return "", err
+	}
+
+	return treeHash, nil
 }
